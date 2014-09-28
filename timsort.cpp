@@ -94,11 +94,12 @@ void in_merge(RandomAccessIterator begin, RandomAccessIterator nextbegin, Random
 			start = temp_array_iterator;
 			while (temp_array_iterator != temp.end()){
 				if (comp(*temp_array_iterator, *second_array_iterator)){
-					degree = (int)pow(2, power);
+					if(!degree)
+					degree = 1;
+					degree*=2;
 					f = temp_array_iterator - temp.begin();
 					if (f + degree < temp.size()){
 						temp_array_iterator += degree;
-						power++;
 					} else {
 						if (start != temp_array_iterator)
 							copy(start, temp_array_iterator, first_array_iterator);
@@ -124,11 +125,12 @@ void in_merge(RandomAccessIterator begin, RandomAccessIterator nextbegin, Random
 			start = second_array_iterator;
 			while (second_array_iterator != last){
 				if (!comp(*temp_array_iterator, *second_array_iterator)){
-					degree = (int)pow(2, power);
+					if(!degree)
+						degree = 1;
+					degree*=2;
 					f = second_array_iterator - begin;
 					if (f + degree < last - nextbegin){
 						second_array_iterator += degree;
-						power++;
 					} else {
 						if (start != second_array_iterator)
 							copy(start, second_array_iterator, first_array_iterator);
