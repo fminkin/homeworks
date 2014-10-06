@@ -18,7 +18,8 @@ public:
 	virtual EWhatMerge WhatNeedMerge(unsigned int len_x, unsigned int len_y, unsigned int len_z) const = 0;
 	virtual unsigned int getGallop() const = 0;
 
-};/*
+};
+
 class TimSortParamsDefault :public TimSortParams{
 public:
 	unsigned int minRun(int len) const{
@@ -30,7 +31,7 @@ public:
 		return len + r;
 	}
 	bool needMerge(unsigned int len_x, unsigned int len_y)const {
-		if (len_x <= len_y)
+		if (len_y <= len_x)
 			return true;
 		else
 			return false;
@@ -54,39 +55,7 @@ public:
 		return 7;
 	}
 };
-*/
-class TimSortParamsDefault :public TimSortParams{
-public:
-	unsigned int minRun(int len) const{
-		int r = 0;
-		while (len >= 64) {
-			r |= len & 1;
-			len >>= 1;
-		}
-		return len + r;
-	}
-	bool needMerge(unsigned int len_x, unsigned int len_y)const {
-		if (len_x <= len_y)
-			return true;
-		else
-			return false;
-	}
-	EWhatMerge WhatNeedMerge(unsigned int len_x, unsigned int len_y, unsigned int len_z)const {
-		if (len_x <= len_z + len_y || len_y <= len_z)
-		{
-			if (len_z < len_x)
-				return WM_MERGE_YZ;
-			else
-				return WM_MERGE_XY;
-		}
-		else
-			return WM_NO_MERGE;
-	}
 
-	unsigned int getGallop() const {
-		return 7;
-	}
-};
 
 template<typename RandomAccessIterator, typename Compare = std::less<typename std::iterator_traits<RandomAccessIterator>::value_type>>
 void makerun(vector<RandomAccessIterator> &pointers_at_runs, int min_run, int &count_of_runs, RandomAccessIterator &run_iterator, RandomAccessIterator last, Compare comp = Compare()){
@@ -99,25 +68,21 @@ void makerun(vector<RandomAccessIterator> &pointers_at_runs, int min_run, int &c
 			if (!comp(*run_iterator, *(run_iterator + 1))){
 				++run_iterator;
 				done = true;
-			}
-			else if (*(run_iterator) == *(run_iterator + 1))
+			} else if (*(run_iterator) == *(run_iterator + 1)){
 				++run_iterator;
-			else
-			{
-				//cout << "decr ended : " << *run_iterator << " " << *(run_iterator + 1) << endl;
+			} else {
 				reverse(pointers_at_runs[count_of_runs - 1], run_iterator);
-				++ run_iterator;
+				++run_iterator;
 				break;
 			}
 		}
 		while (run_iterator != last && !done){   //Increasing sequence
-			if (comp(*run_iterator, *(run_iterator + 1)) || *(run_iterator) == *(run_iterator+1)){
-				
+			if (comp(*run_iterator, *(run_iterator + 1)) || *(run_iterator) == *(run_iterator + 1)){
+
 				++run_iterator;
 			}
-			else {	
+			else {
 				++run_iterator;
-				//cout << "incr ended : "<<*run_iterator << " " << *(run_iterator + 1) << endl;
 				break;
 			}
 		}
@@ -269,8 +234,11 @@ void merge(int count_of_segments, stack<pair<RandomAccessIterator, int> > &stack
 			stack_of_runs.push(make_pair(x[1].first, x[0].second + x[1].second));
 			return;
 		}
-		else
+		else{
+			stack_of_runs.push(x[1]);
+			stack_of_runs.push(x[0]);
 			return;
+		}
 	}
 	if (end){
 		switch (params->WhatNeedMerge(x[0].second, x[1].second, x[2].second)){
@@ -280,6 +248,7 @@ void merge(int count_of_segments, stack<pair<RandomAccessIterator, int> > &stack
 			stack_of_runs.push(make_pair(x[1].first, x[0].second + x[1].second));
 			break;
 		case WM_MERGE_XY:
+
 			stack_of_runs.push(x[2]);
 			in_merge(x[1].first, x[0].first, x[0].first + x[0].second, comp, params);
 			stack_of_runs.push(make_pair(x[1].first, x[0].second + x[1].second));
@@ -295,7 +264,9 @@ void merge(int count_of_segments, stack<pair<RandomAccessIterator, int> > &stack
 	{
 		switch (params->WhatNeedMerge(x[0].second, x[1].second, x[2].second)){
 		case WM_NO_MERGE:
-			return;
+			for (int i = count_of_segments - 1; i >= 0; --i)
+				stack_of_runs.push(x[i]);
+			break;
 		case WM_MERGE_XY:
 			stack_of_runs.push(x[2]);
 			in_merge(x[1].first, x[0].first, x[0].first + x[0].second, comp, params);
@@ -308,28 +279,40 @@ void merge(int count_of_segments, stack<pair<RandomAccessIterator, int> > &stack
 			break;
 		}
 	}
+
 }
 
 template<typename RandomAccessIterator, typename Compare = std::less<typename std::iterator_traits<RandomAccessIterator>::value_type>>
-void start_merge( bool end, stack<pair<RandomAccessIterator, int> > &stack_of_runs, Compare comp = Compare(), const TimSortParams* const params = &TimSortParamsDefault()){
+void start_merge(bool end, stack<pair<RandomAccessIterator, int> > &stack_of_runs, Compare comp = Compare(), const TimSortParams* const params = &TimSortParamsDefault()){
+	unsigned int size;
+
 	while (stack_of_runs.size() != 1){
+		
 		if (stack_of_runs.size() == 2)
 		{
-			if (end)
+			if (end){
 				merge(2, stack_of_runs, comp, params, true);
-			else
-				return;
+			} else {
+				size = stack_of_runs.size();
+				merge(2, stack_of_runs, comp, params);
+				if (stack_of_runs.size() == size){
+					return;
+				}
+			}
 		}
 		else{
 			if (end){
-				merge(3, stack_of_runs, comp, params, true);
-			}
-			else{
+			 	merge(3, stack_of_runs, comp, params, true);
+			} else {
+				size = stack_of_runs.size();
 				merge(3, stack_of_runs, comp, params);
+				if (stack_of_runs.size() == size){
+					return;
+				}
 			}
 		}
-	} 
-	
+	}
+
 }
 
 template<typename RandomAccessIterator, typename Compare = std::less<typename std::iterator_traits<RandomAccessIterator>::value_type>>
@@ -355,15 +338,13 @@ void TimSort(RandomAccessIterator first, RandomAccessIterator last, Compare comp
 			run_iterator,
 			last,
 			comp);
-	//	cout << run_iterator - pointers_at_runs[count_of_runs - 1] << endl;
 		insertion_sort(pointers_at_runs[count_of_runs - 1], run_iterator, comp);
 		stack_of_runs.push(make_pair(pointers_at_runs[count_of_runs - 1], run_iterator - pointers_at_runs[count_of_runs - 1]));
-		
-	//	start_merge( false, stack_of_runs, comp, params);	
+		start_merge(false, stack_of_runs, comp, params);	
 	}
-	
-	start_merge( true,stack_of_runs, comp, params);
-	
+
+	start_merge(true, stack_of_runs, comp, params);
+
 }
 
 template <typename RandomAccessIterator>
@@ -377,8 +358,7 @@ void sorted(RandomAccessIterator first, RandomAccessIterator last) {
 	return;
 }
 int main(){
-	freopen("txt.txt", "w", stdout);
-	freopen("txt1.txt", "r", stdin);
+	
 	srand(123123123);
 	const int N = 100000;
 	vector<int> a(N), b(N);
@@ -403,17 +383,3 @@ int main(){
 	return 0;
 
 }
-// В параметрах сорта добавляется параметр const TimSortParams* const params
-// 1 конст значит мы не меняем значение по указателю, а второй - сам указатель
-/*
-EWhatMerge WhatNeedMerge = <params>
-whatNeedMerge(...)
-{
-if (WhatMerge == WM_NO_MERGE)
-continue;
-else
-if (....)
-merge(X, Y)...
-
-}
-*/
