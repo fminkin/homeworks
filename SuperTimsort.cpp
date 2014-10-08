@@ -10,8 +10,18 @@ enum EWhatMerge{
 	WM_MERGE_XY,
 	WM_MERGE_YZ
 };
-
-int p = 0;
+template <typename RandomAccessIterator>
+class Run{
+public:
+	RandomAccessIterator begin;
+	unsigned int size;
+	Run(RandomAccessIterator iter, unsigned int s){
+		size = s;
+		begin = iter;
+	}
+	Run() {};
+	
+};
 class TimSortParams{
 public:
 	virtual unsigned int minRun(int len) const = 0;
@@ -56,8 +66,37 @@ public:
 		return 7;
 	}
 };
+template<class T>
+class MyStack{
+private:
+	vector<T> stack_base;
+public:
+	MyStack() {};
+	~MyStack() {
+		stack_base.clear();
+	}
+	unsigned int size(){
+		return stack_base.size();
+	}
+	void push_back(T a){
+		stack_base.push_back(a);
+	}
 
-
+	T operator [](int diff){
+		return stack_base[stack_base.size() +diff - 1];
+	}
+	void pop(){
+		stack_base.erase(stack_base.begin() + stack_base.size() - 1);
+		
+	}
+	void pop_for_xy(){
+		for (size_t i = 0; i < 2; i++)
+			stack_base.erase(stack_base.begin() + stack_base.size() - 2);
+	}
+	void pop_index(int index){
+		stack_base.erase(stack_base.begin() + stack_base.size() - 1 + index);
+	}
+};
 template<typename RandomAccessIterator, typename Compare = std::less<typename std::iterator_traits<RandomAccessIterator>::value_type>>
 void makerun(RandomAccessIterator& last_pointer, int min_run, RandomAccessIterator &run_iterator, RandomAccessIterator last, Compare comp = Compare()){
 	bool is_decreasing = false;
@@ -75,7 +114,7 @@ void makerun(RandomAccessIterator& last_pointer, int min_run, RandomAccessIterat
 	if (run_iterator != last && is_decreasing){
 		++run_iterator;
 	}
-	for (; run_iterator != last; ++run_iterator){ //Decreasing sequence
+	for (; run_iterator != last; ++run_iterator){
 		if (!comp(run_iterator[-1], run_iterator[0])){
 			continue;
 		}
@@ -92,8 +131,8 @@ void makerun(RandomAccessIterator& last_pointer, int min_run, RandomAccessIterat
 		else
 			break;
 	}
-	
-	
+
+
 	RandomAccessIterator insertionsort_begin = run_iterator;
 	while (run_iterator - last_pointer < min_run && run_iterator != last)
 		++run_iterator;
@@ -217,104 +256,79 @@ template<typename RandomAccessIterator, typename Compare = std::less<typename st
 void insertion_sort(RandomAccessIterator first, RandomAccessIterator sequence, RandomAccessIterator last, Compare comp = Compare()){
 	if (!(first < last))
 		return;
-	for (RandomAccessIterator i = sequence; i != last; ++i)
+	for (RandomAccessIterator i = first; i != last; ++i)
 	for (RandomAccessIterator j = i; j != first && comp(*j, *(j - 1)); --j)
-		std::iter_swap(j - 1, j);
+		std::	iter_swap(j - 1, j);
 }
 template<typename RandomAccessIterator, typename Compare = std::less<typename std::iterator_traits<RandomAccessIterator>::value_type>>
-void merge(int count_of_segments, stack<pair<RandomAccessIterator, int> > &stack_of_runs, Compare comp = Compare(), const TimSortParams* const params = &TimSortParamsDefault(), bool end = false){
+void merge(int count_of_segments, MyStack<Run<RandomAccessIterator>> &stack_of_runs, Compare comp = Compare(), const TimSortParams* const params = &TimSortParamsDefault(), bool end = false){
 
-	pair<RandomAccessIterator, int> x[3];
-	for (int i = 0; i < count_of_segments; i++)
-	{
-		x[i] = stack_of_runs.top();
-		stack_of_runs.pop();
+	if (count_of_segments == 2 || end){
+		in_merge(stack_of_runs[-1].begin, stack_of_runs[0].begin, stack_of_runs[0].begin + stack_of_runs[0].size, comp, params);
+		stack_of_runs.push_back(Run<RandomAccessIterator>(stack_of_runs[-1].begin, stack_of_runs[0].size + stack_of_runs[-1].size));
+		stack_of_runs.pop_index(-1);
+		stack_of_runs.pop_index(-1);
+		return;
 	}
-	if (count_of_segments == 2){
-		if (params->needMerge(x[0].second, x[1].second) || end){
-			in_merge(x[1].first, x[0].first, x[0].first + x[0].second, comp, params);
-			stack_of_runs.push(make_pair(x[1].first, x[0].second + x[1].second));
-			return;
-		}
-		else{
-			stack_of_runs.push(x[1]);
-			stack_of_runs.push(x[0]);
-			return;
-		}
-	}
-	if (end){
-		switch (params->WhatNeedMerge(x[0].second, x[1].second, x[2].second)){
-		case WM_NO_MERGE:
-			stack_of_runs.push(x[2]);
-			in_merge(x[1].first, x[0].first, x[0].first + x[0].second, comp, params);
-			stack_of_runs.push(make_pair(x[1].first, x[0].second + x[1].second));
-			break;
-		case WM_MERGE_XY:
+	
 
-			stack_of_runs.push(x[2]);
-			in_merge(x[1].first, x[0].first, x[0].first + x[0].second, comp, params);
-			stack_of_runs.push(make_pair(x[1].first, x[0].second + x[1].second));
-			break;
-		case WM_MERGE_YZ:
-			in_merge(x[2].first, x[1].first, x[1].first + x[1].second, comp, params);
-			stack_of_runs.push(make_pair(x[2].first, x[2].second + x[1].second));
-			stack_of_runs.push(x[0]);
-			break;
-		}
-	}
-	else
-	{
-		switch (params->WhatNeedMerge(x[0].second, x[1].second, x[2].second)){
-		case WM_NO_MERGE:
-			for (int i = count_of_segments - 1; i >= 0; --i)
-				stack_of_runs.push(x[i]);
-			break;
-		case WM_MERGE_XY:
-			stack_of_runs.push(x[2]);
-			in_merge(x[1].first, x[0].first, x[0].first + x[0].second, comp, params);
-			stack_of_runs.push(make_pair(x[1].first, x[0].second + x[1].second));
-			break;
-		case WM_MERGE_YZ:
-			in_merge(x[2].first, x[1].first, x[1].first + x[1].second, comp, params);
-			stack_of_runs.push(make_pair(x[2].first, x[2].second + x[1].second));
-			stack_of_runs.push(x[0]);
-			break;
-		}
+	switch (params->WhatNeedMerge(stack_of_runs[0].size, stack_of_runs[-1].size, stack_of_runs[-2].size)){
+	case WM_NO_MERGE:
+		return;
+	case WM_MERGE_XY:
+		in_merge(stack_of_runs[-1].begin, stack_of_runs[0].begin, stack_of_runs[0].begin + stack_of_runs[0].size, comp, params);
+		stack_of_runs.push_back(Run<RandomAccessIterator>(stack_of_runs[-1].begin, stack_of_runs[0].size + stack_of_runs[-1].size));
+		stack_of_runs.pop_index(-1);
+		stack_of_runs.pop_index(-1);
+		break;
+	case WM_MERGE_YZ:
+		Run<RandomAccessIterator> temp;	
+		in_merge(stack_of_runs[-2].begin, stack_of_runs[-1].begin, stack_of_runs[-1].begin+ stack_of_runs[-1].size, comp, params);
+		temp = stack_of_runs[0];
+		stack_of_runs.push_back(Run<RandomAccessIterator>(stack_of_runs[-2].begin, stack_of_runs[-2].size + stack_of_runs[-1].size));
+		stack_of_runs.pop_index(-1);
+		stack_of_runs.pop_index(-1);
+		stack_of_runs.pop_index(-1);
+		stack_of_runs.push_back(temp);
+		break;
 	}
 
 }
 
 template<typename RandomAccessIterator, typename Compare = std::less<typename std::iterator_traits<RandomAccessIterator>::value_type>>
-void start_merge(bool end, stack<pair<RandomAccessIterator, int> > &stack_of_runs, Compare comp = Compare(), const TimSortParams* const params = &TimSortParamsDefault()){
+void start_merge(bool end, MyStack<Run<RandomAccessIterator>> &stack_of_runs, Compare comp = Compare(), const TimSortParams* const params = &TimSortParamsDefault()){
 	unsigned int size;
 
 	while (stack_of_runs.size() != 1){
-
 		if (stack_of_runs.size() == 2)
 		{
 			if (end){
-				merge(2, stack_of_runs, comp, params, true);
+				merge(2, stack_of_runs, comp, params);
+				return;
 			}
 			else {
-				size = stack_of_runs.size();
-				merge(2, stack_of_runs, comp, params);
-				if (stack_of_runs.size() == size){
-					return;
+				if (params->needMerge(stack_of_runs[0].size, stack_of_runs[-1].size)){
+					merge(2, stack_of_runs, comp, params);
 				}
+				else
+					return;
 			}
 		}
 		else{
 			if (end){
-				merge(3, stack_of_runs, comp, params, true);
+				if (params->WhatNeedMerge(stack_of_runs[0].size, stack_of_runs[-1].size, stack_of_runs[-2].size) == WM_NO_MERGE)
+					merge(2, stack_of_runs, comp, params, true);
+				else
+					merge(3, stack_of_runs, comp, params);
 			}
 			else {
-				size = stack_of_runs.size();
-				merge(3, stack_of_runs, comp, params);
-				if (stack_of_runs.size() == size){
+				if (params->WhatNeedMerge(stack_of_runs[0].size, stack_of_runs[-1].size, stack_of_runs[-2].size) == WM_NO_MERGE)
 					return;
-				}
+				
+				merge(3, stack_of_runs, comp, params);
 			}
 		}
+		
 	}
 
 }
@@ -324,7 +338,7 @@ void TimSort(RandomAccessIterator first, RandomAccessIterator last, Compare comp
 	int vector_length = last - first,
 		min_run = params->minRun(vector_length);
 	RandomAccessIterator last_pointer, run_iterator = first;
-	stack< pair<RandomAccessIterator, int> > stack_of_runs;
+	MyStack<Run<RandomAccessIterator>> stack_of_runs;
 
 	for (; run_iterator != last;){
 		makerun(
@@ -332,17 +346,13 @@ void TimSort(RandomAccessIterator first, RandomAccessIterator last, Compare comp
 			min_run,
 			run_iterator,
 			last,
-			comp);	
-		cout << run_iterator - last_pointer << endl;
-		for (RandomAccessIterator i = last_pointer; i != run_iterator; ++i)
-			cout << *i << " ";
-		cout << endl;
-		stack_of_runs.push(make_pair(last_pointer, run_iterator - last_pointer));
+			comp);
+		
+		stack_of_runs.push_back(Run<RandomAccessIterator>(last_pointer, run_iterator - last_pointer));
 		start_merge(false, stack_of_runs, comp, params);
 	}
-
+	
 	start_merge(true, stack_of_runs, comp, params);
-	cout << stack_of_runs.size() << endl;
 
 }
 
@@ -368,20 +378,25 @@ for (vector<int>::iterator i = a.begin, j = i+n; j!= a.end; ++i)
 
 }*/
 int main(){
-	freopen("txt.txt", "r", stdin);
-	freopen("txt1.txt", "w", stdout);
+	//freopen("txt.txt", "r", stdin);
+	//freopen("txt1.txt", "w", stdout);
 	srand(123123123);
-	const int N = 200, M = 1000;
-	
+	const int N = 1000000, M = 1000;
+
 	vector<int> a(N), b(N);
 	for (int i = 0; i < N; i++){
-		a[i] = rand() % 20;
-		//a[i] = rand();
+		a[i] = rand();
 		b[i] = a[i];
-		//cout << a[i] << " ";
 	}
-	cout << endl;
 	
+	MyStack<Run<vector<int>::iterator>> f;
+	Run<vector<int>::iterator> ff; 
+	f.push_back(ff);
+	cout << f.size() << endl;
+	f.pop();
+	cout << f.size() << endl;
+	f.push_back(Run<vector<int>::iterator>(a.begin(), 3));
+	cout << f[0].size << endl;
 
 	clock_t time;
 	time = clock();
@@ -395,33 +410,8 @@ int main(){
 	std::cout.precision(10);
 	cout << "Std::sort worked for: " << (double)time / CLOCKS_PER_SEC << endl;
 	sorted(a.begin(), a.end());
-	for (int i = 0; i < N; i++)
-		cout << a[i] << " ";
-	cout << endl;
-	for (int i = 0; i < N; i++)
-		cout << b[i] << " ";
-	cout << endl;
 	
+	system("PAUSE");
 	return 0;
 
 }
-/*
-vector<string> s(N);
-for (size_t i = 0; i < N; ++i){
-s[i].resize(M);
-getstring(s[i]);
-}
-
-clock_t time;
-time = clock();
-TimSort(s.begin(), s.end());
-time = clock() - time;
-std::cout.precision(10);
-cout << "Timsort worked for: " << (double)time / CLOCKS_PER_SEC << endl;
-time = clock();
-sort(s.begin(), s.end());
-time = clock() - time;
-std::cout.precision(10);
-cout << "Std::sort worked for: " << (double)time / CLOCKS_PER_SEC << endl;
-sorted(s.begin(), s.end());
-*/
