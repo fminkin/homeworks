@@ -1,0 +1,79 @@
+#include<iostream>
+#include<vector> 
+#include<stack>
+#include<ctime>
+#include<algorithm>
+#include<string>
+#include "timsort.h"
+#include "tests.h"
+using namespace std;
+
+void sorted(vector<int> &a, vector<int> &b) {
+	for (int i = 0; i < a.size(); ++i)
+	if (a[i] != b[i]){
+		cout << "Not sorted\n";
+		return;
+	}
+	cout << "Sorted\n";
+}
+void sorted(vector<string> &a, vector<string> &b) {
+	for (int i = 0; i < a.size(); ++i)
+	if (a[i] != b[i]){
+		cout << "Not sorted\n";
+		return;
+	}
+	cout << "Sorted\n";
+}
+class StringCompare{
+public:
+	bool operator()(string a,string b) {
+		size_t s_a = a.length(), s_b = b.length();
+		if (s_a < s_b)
+			return true;
+		else if (s_a > s_b)
+			return false;
+		for (size_t iter = 0; iter < s_a; ++iter)
+		{
+			if (a[iter] < b[iter])
+				return true;
+			else if (a[iter] > b[iter])
+				return false;
+		}
+		return false;
+	}
+};
+
+
+int main(){
+	const int N = 1e6;
+	vector<int> a(N), b(N);
+
+	test::gettest(a, true, N/10);
+	for (int i = 0; i < N; i++)
+		b[i] = a[i];
+	
+	clock_t time, timesort;
+	time = clock();
+	TimSort(a.begin(), a.end());
+	time = clock() - time;
+	std::cout.precision(10);
+	cout << "Timsort worked for: " << (double)time / CLOCKS_PER_SEC << endl;
+	timesort = clock();
+	sort(b.begin(), b.end());
+	timesort = clock() - timesort;
+	std::cout.precision(10);
+	cout << "Std::sort worked for: " << (double)timesort / CLOCKS_PER_SEC << endl;
+
+	if ((double)timesort / time < 1){
+		cout.precision(3);
+		cout << "In " << (double)time / timesort << " times slower\n";
+	}
+	else {
+		cout.precision(3);
+		cout << "In " << (double)timesort / time << " times faster\n";
+	}
+	sorted(a, b);
+	
+	system("PAUSE");
+	return 0;
+}
