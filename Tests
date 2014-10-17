@@ -1,0 +1,60 @@
+#include<iostream>
+#include<vector>
+#include<string>
+#include<algorithm>
+const int MAXLENSIZE = 100;
+namespace test{
+	char getletter(){
+		return (char)(97 + rand() % 26);
+	}
+	std::string getstring(int len){
+		std::string f;
+		f.resize(len);
+		for (int i = 0; i < len; i++)
+			f[i] = getletter();
+		return f;
+	}
+	template<typename Compare = std::less<string>>
+	void gettest(std::vector<std::string> &a, bool sorted, int size_of_parts, Compare comp = Compare()){
+		srand(1000);
+		int size_of_string = a.size();
+		for (size_t s = 0; s < size_of_string; ++s){
+			a[s] = getstring(rand%(MAXLENSIZE+1));
+		}
+		if (sorted)
+		{
+			for (size_t s = 0; s < size_of_string;)
+			{
+				if (s + size_of_parts >= size_of_string)
+					sort(a.begin() + s, a.end(), comp);
+				else
+				{
+					sort(a.begin() + s, a.begin() + s + size_of_string, comp);
+					s += size_of_string;
+				}
+			}
+		}
+	}
+	template<typename Compare = std::less<int>>
+	void gettest(std::vector<int> &a, bool sorted, int size_of_parts, Compare comp = Compare()){
+		srand(120);
+		int size_of_array = a.size();
+		for (size_t s = 0; s < size_of_array; ++s){
+			a[s] = rand();
+
+		}
+		if (sorted)
+		{
+			for (size_t s = 0; s < size_of_array;)
+			{
+				if (s + size_of_parts >= size_of_array)
+					sort(a.begin() + s, a.end(), comp);
+				else
+				{
+					sort(a.begin() + s, a.begin() + s + size_of_array, comp);
+					s += size_of_array;
+				}
+			}
+		}
+	}
+}
