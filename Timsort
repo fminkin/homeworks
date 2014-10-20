@@ -16,12 +16,13 @@ public:
 	}
 	Run() {};
 };
+
 template<class Compare>
 class ReverseComparator{
 public:
 	Compare comp;
 	template<class ElementType>
-	bool operator() (ElementType &first, ElementType &second) 
+	bool operator() (const ElementType &first, const ElementType &second) const
 	{
 		return comp(second, first);
 	}
@@ -140,37 +141,22 @@ void makerun(RandomAccessIterator& last_pointer, int min_run, RandomAccessIterat
 	if (!is_decreasing){
 		sequence(run_iterator, last, ReverseComparator<decltype(comp)>());
 	}
-	
+
 	RandomAccessIterator insertionsort_begin = run_iterator - 1;
 	while (run_iterator - last_pointer < min_run && run_iterator != last)
 		++run_iterator;
 	insertion_sort(last_pointer, insertionsort_begin, run_iterator, comp);
 }
-template<typename RandomAccessIterator, typename Compare>
-void gallop(RandomAccessIterator first_array_iterator, unsigned int size_of_main_array, RandomAccessIterator external_array_iterator, unsigned int size_of_external_array , Compare comp){
-	RandomAccessIterator start = external_array_iterator;
-	typedef typename std::iterator_traits<RandomAccessIterator>::difference_type n = std::distance(start, external_array_iterator);
-	vector<typename std::iterator_traits<RandomAccessIterator>::value_type>::iterator 
-	unsigned int degree = 1;
-	for (;;){
-		if (comp(*first_array_iterator, *external_array_iterator)){
-			if (n + size_of_external_array + degree < size_of_main_array)
-				external_array_iterator += degree;
-			else{
-				degree /= 2;
-				break;
-			}
-			degree *= 2;
-		}
-		else{
-			external_array_iterator -= degree;
-		}
-	}
 
-	std::copy(start, external_array_iterator, first_array_iterator);
-
-	first_array_iterator += n;
+template<typename RandomAccessIterator, typename VectorIter, typename ElementType, typename Compare>
+void gallop(RandomAccessIterator first_array_iterator, VectorIter begin, VectorIter end, ElementType t, Compare comp){
+	 VectorIter start = begin;
+	 begin = lower_bound (begin, end, t, comp);
+	 first_array_iterator += begin - start;
 }
+
+
+
 template <typename RandomAccessIterator, typename Compare>
 void my_merge(RandomAccessIterator begin, RandomAccessIterator nextbegin, RandomAccessIterator last, Compare comp, const TimSortParams* const params = &TimSortParamsDefault()){
 	vector<typename std::iterator_traits<RandomAccessIterator>::value_type> temp(nextbegin - begin);
@@ -180,70 +166,37 @@ void my_merge(RandomAccessIterator begin, RandomAccessIterator nextbegin, Random
 	RandomAccessIterator first_array_iterator = begin,
 		second_array_iterator = nextbegin, start_gallop_second;
 	for (; temp_array_iterator != temp.end() && second_array_iterator != last;){
+
+	
+
 		if (comp(*temp_array_iterator, *second_array_iterator)){
 			*first_array_iterator = *temp_array_iterator;
 			++first_array_iterator;
 			++temp_array_iterator;
 			comp_from_first++;
-		} else {
+			/*if (comp_from_first == params->getGallop()){
+				gallop(first_array_iterator, temp_array_iterator, temp.end(), *second_array_iterator, comp);
+				comp_from_second = comp_from_first = 0;
+			}*/
+		}
+		else {
 			*first_array_iterator = *second_array_iterator;
 			++first_array_iterator; ++second_array_iterator;
 			comp_from_second++;
-		}
-		
-		if (comp_from_second == params->getGallop()){
-			start_gallop_second = second_array_iterator;
-		
-			unsigned int degree = 1;
-			for (;;){
-				if (comp(*temp_array_iterator, *second_array_iterator)){
-					if (second_array_iterator - nextbegin + degree < first_array_iterator - begin)
-						second_array_iterator += degree;
-					else{
-						degree /= 2;
-						break;
-					}
-					degree *= 2;
-				}
-				else{
-					second_array_iterator -= degree;
-				}
+			/*
+			if (comp_from_second == params->getGallop()){
+				gallop(first_array_iterator, second_array_iterator, last, *temp_array_iterator, comp);
+		    	comp_from_second = comp_from_first = 0;
 			}
+			*/
 
-			std::copy(start_gallop_second, second_array_iterator, first_array_iterator);
-
-			first_array_iterator += second_array_iterator - start_gallop_second;
-			comp_from_second = comp_from_first = 0;
 		}
-		if (comp_from_first == params->getGallop()){
-			start_gallop_temp = temp_array_iterator;
-			unsigned int degree = 1;
-			for (;;){
-				if (comp(*temp_array_iterator, *second_array_iterator)){
-					if(temp_array_iterator - temp.begin() + degree < first_array_iterator - begin)
-						temp_array_iterator += degree;
-					else{
-						degree /= 2;
-						break;
-					}
-					degree *= 2;
-				}
-				else{
-					temp_array_iterator -= degree;
-				}
-			}
 
-			std::copy(start_gallop_temp, temp_array_iterator, first_array_iterator);
 
-			first_array_iterator += temp_array_iterator - start_gallop_temp;
-			comp_from_second = comp_from_first = 0;
-		}
-		
-		
 
 	}
-	
-	for (; temp_array_iterator!= temp.end(); ++temp_array_iterator){
+
+	for (; temp_array_iterator != temp.end(); ++temp_array_iterator){
 		*first_array_iterator = *temp_array_iterator;
 		++first_array_iterator;
 	}
@@ -254,7 +207,8 @@ template <typename RandomAccessIterator, typename Compare>
 void in_merge(RandomAccessIterator &begin, RandomAccessIterator &nextbegin, RandomAccessIterator &last, Compare comp, const TimSortParams* const params = &TimSortParamsDefault()){
 	if (nextbegin - begin <= last - nextbegin){
 		my_merge(begin, nextbegin, last, comp, params);
-	} else {
+	}
+	else {
 		typedef std::reverse_iterator<RandomAccessIterator> RIter;
 		my_merge(RIter(last), RIter(nextbegin), RIter(begin), ReverseComparator<decltype(comp)>(), params);
 	}
@@ -263,7 +217,7 @@ template<typename RandomAccessIterator, typename Compare>
 void insertion_sort(RandomAccessIterator first, RandomAccessIterator sequence, RandomAccessIterator last, Compare comp){
 	if (!(sequence < last))
 		return;
-	for (RandomAccessIterator i = sequence-1; i != last; ++i){
+	for (RandomAccessIterator i = sequence - 1; i != last; ++i){
 		for (RandomAccessIterator j = i; j != first && comp(*j, *(j - 1)); --j)
 			std::iter_swap(j - 1, j);
 	}
@@ -291,7 +245,7 @@ void start_merge(MyStack<Run<RandomAccessIterator>> &stack_of_runs, Compare comp
 		if (stack_of_runs.size() == 2){
 			if (params->needMerge(stack_of_runs[0].size, stack_of_runs[-1].size)){
 				merge_xy(stack_of_runs, comp, params);
-			} 
+			}
 			return;
 		}
 		else {
@@ -318,6 +272,7 @@ template<typename RandomAccessIterator, typename Compare = std::less<typename st
 void TimSort(RandomAccessIterator first, RandomAccessIterator last, Compare comp = Compare(), const TimSortParams* const params = &TimSortParamsDefault()){
 	int vector_length = last - first,
 		min_run = params->minRun(vector_length);
+	
 	RandomAccessIterator last_pointer, run_iterator = first;
 	MyStack<Run<RandomAccessIterator>> stack_of_runs;
 
@@ -328,9 +283,9 @@ void TimSort(RandomAccessIterator first, RandomAccessIterator last, Compare comp
 			run_iterator,
 			last,
 			comp);
-	
+
 		stack_of_runs.push_back(Run<RandomAccessIterator>(last_pointer, run_iterator - last_pointer));
-		start_merge( stack_of_runs, comp, params);
+		start_merge(stack_of_runs, comp, params);
 	}
 
 	final_merge(stack_of_runs, comp, params);
