@@ -1,0 +1,21 @@
+#include<iostream>
+#include"PFT.h"
+#include<vector>
+#include<set>
+#include"tests.h"
+#include<time.h>
+using namespace std;
+int main(){
+	PerfectHashTable t;
+	Init_test test(false);
+	int truth;
+	cout << "1 for sequence with reps and 0 for sequence without reps\n";
+	cin >> truth;
+	if (truth)
+		test.generate(t, true);
+	else
+		test.generate(t, false);
+	
+	system("pause");
+	return 0;
+}
